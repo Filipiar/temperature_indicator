@@ -1,0 +1,101 @@
+const int analogInPin = A0;            // Analog input pin for the voltage divider
+float knownResistor = 330.0;           // Replace with the actual resistance of the known resistor in ohms
+const int redPin = 11;
+const int greenPin = 10;
+const int bluePin = 9;
+const int redLed = 12;
+
+
+
+// Calibration values
+
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+  
+  
+ 
+  // Set the RGB LED pins as outputs
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+   pinMode(redLed, OUTPUT);
+  
+}
+
+void loop() {
+  float temp =  getTemp();
+  Serial.println(temp);
+   if(temp > 150)
+ {
+  digitalWrite(redPin, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(500);                       // wait for a second
+  digitalWrite(redPin, LOW);    // turn the LED off by making the voltage LOW
+  delay(500);                       // wait for a second
+  }
+   setTempColor(temp);
+ 
+  delay(100); // Wait for a second (adjust as needed)
+}
+
+ float getTemp(){
+  const float calibrationResistance = 380.0;  // Replace with the actual resistance at a known temperature
+const float calibrationTemperature = 20.0;    // Replace with the known temperature in Celsius
+   int sensorValue = analogRead(analogInPin); // Read the analog input
+   // Steinhart-Hart coefficients for the thermistor
+float A = 1.009249522e-03;
+float B = 2.378405444e-04;
+float C = 2.019202697e-07;
+
+  float voltage = sensorValue * (5.0 / 1023.0); // Convert the analog value to voltage
+  float resistance = (voltage * knownResistor) / (5.0 - voltage); // Calculate the unknown resistor value
+
+  // Recalculate Steinhart-Hart coefficients based on calibration
+  A = 1.009249522e-03;
+  B = 2.378405444e-04;
+  C = 2.019202697e-07;
+
+  // Calculate temperature using the adjusted coefficients
+  float temperatureC = 1.0 / (A + B * log(resistance) + C * pow(log(resistance), 3));
+
+  // Offset the temperature based on calibration
+  temperatureC -= calibrationTemperature;
+
+  // Add a fixed offset of -575°C
+  temperatureC -= 595.0;
+  return temperatureC;
+ }
+
+ 
+void setTempColor(float tp){
+  int t = static_cast<int>(tp);
+  if(t < 0){
+    setColor(0, 0, 255);
+  }
+  else if(t < 25){
+    int value = map(t, 0, 25, 0, 255 );
+    setColor(value, value, 255);
+  }
+  else if(t < 40){
+    int value = map(t, 25, 40, 0, 255 );
+    setColor(255 - value, 255, 255 - value);
+    }
+  else if(t < 90){
+    setColor(0, 255, 0);
+    }
+  else if(t < 150){
+    int value = map(t, 90, 150, 0, 255 );
+    setColor(value, 255 - value, 0);
+    }
+    else{ setColor(255, 0, 0);}
+}
+// Function to set the color of the RGB LED
+void setColor(int red, int green, int blue) {
+  analogWrite(redPin, 255 - min(red,255));
+  analogWrite(greenPin, 255 - min(green,255));
+  analogWrite(bluePin, 255 - min(blue,255));
+}
+
+int map(int x, int inMin, int inMax, int outMin, int outMax) {
+  return static_cast<int>((x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin);
+}
